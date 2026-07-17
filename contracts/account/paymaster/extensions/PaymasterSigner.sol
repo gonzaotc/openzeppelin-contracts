@@ -37,6 +37,11 @@ abstract contract PaymasterSigner is AbstractSigner, EIP712, Paymaster {
         uint48 validAfter,
         uint48 validUntil
     ) internal view virtual returns (bytes32) {
+        // Both paymaster gas limits share the word at [20:52]: a single load replaces
+        // the two `ERC4337Utils` accessors, which each length-check and load it.
+        uint256 paymasterGasLimits = userOp.paymasterAndData.length < 52
+            ? 0
+            : uint256(bytes32(userOp.paymasterAndData[20:52]));
         return
             _hashTypedDataV4(
                 keccak256(
@@ -49,8 +54,8 @@ abstract contract PaymasterSigner is AbstractSigner, EIP712, Paymaster {
                         userOp.accountGasLimits,
                         userOp.preVerificationGas,
                         userOp.gasFees,
-                        userOp.paymasterVerificationGasLimit(),
-                        userOp.paymasterPostOpGasLimit(),
+                        paymasterGasLimits >> 128,
+                        uint256(uint128(paymasterGasLimits)),
                         validAfter,
                         validUntil
                     )
@@ -89,9 +94,11 @@ abstract contract PaymasterSigner is AbstractSigner, EIP712, Paymaster {
         PackedUserOperation calldata userOp
     ) internal pure virtual returns (uint48 validAfter, uint48 validUntil, bytes calldata signature) {
         bytes calldata paymasterData = userOp.paymasterData();
-        return
-            paymasterData.length < 12
-                ? (uint48(0), uint48(0), Calldata.emptyBytes())
-                : (uint48(bytes6(paymasterData[0:6])), uint48(bytes6(paymasterData[6:12])), paymasterData[12:]);
+        if (paymasterData.length < 12) return (uint48(0), uint48(0), Calldata.emptyBytes());
+
+        // Both timestamps share the 12-byte window at [0:12]: a single load replaces
+        // the two bounds-checked slices.
+        bytes12 validity = bytes12(paymasterData[:12]);
+        return (uint48(bytes6(validity)), uint48(bytes6(validity << 48)), paymasterData[12:]);
     }
 }

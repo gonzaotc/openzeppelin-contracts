@@ -205,8 +205,11 @@ abstract contract PaymasterERC20 is Paymaster {
         bytes calldata /* prefundContext */
     ) internal virtual returns (bool success, uint256 actualAmount) {
         // Under ERC-4337 EntryPoint, `actualGasCost <= maxCost` and `actualUserOpFeePerGas <= maxFeePerGas`,
-        // so `actualAmount_ <= prefundAmount` holds.
-        return (token.trySafeTransfer(prefunder, prefundAmount - actualAmount_), actualAmount_);
+        // so `actualAmount_ <= prefundAmount` holds and the subtraction cannot underflow. If a caller breaks
+        // that requirement, the wrapped amount makes `trySafeTransfer` fail and {_postOp} revert.
+        unchecked {
+            return (token.trySafeTransfer(prefunder, prefundAmount - actualAmount_), actualAmount_);
+        }
     }
 
     /**
@@ -289,9 +292,12 @@ abstract contract PaymasterERC20 is Paymaster {
      */
     function _erc20Cost(uint256 nativeCost, uint256 tokenPerNative) internal view virtual returns (uint256) {
         uint256 denominator = _tokenPerNativeDenominator();
-        (uint256 high, ) = nativeCost.mul512(tokenPerNative);
+        (uint256 high, uint256 low) = nativeCost.mul512(tokenPerNative);
+        if (high >= denominator) return type(uint256).max;
+        // When the product fits in one word, a plain ceiling division avoids repeating
+        // the 512-bit product inside `mulDiv`.
         return
-            high < denominator ? nativeCost.mulDiv(tokenPerNative, denominator, Math.Rounding.Ceil) : type(uint256).max;
+            high == 0 ? low.ceilDiv(denominator) : nativeCost.mulDiv(tokenPerNative, denominator, Math.Rounding.Ceil);
     }
 
     /// @dev Internal function that allows the withdrawer to extract ERC-20 tokens resulting from gas payments.
