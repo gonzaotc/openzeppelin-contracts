@@ -20,10 +20,11 @@ async function fixture() {
   const wallet = await ethers.deployContract('ERC1271WalletMock', [signer]);
   const wallet2 = await ethers.deployContract('ERC1271WalletMock', [extraSigner]);
   const malicious = await ethers.deployContract('ERC1271MaliciousMock');
+  const strict = await ethers.deployContract('ERC1271StrictEncodingMock');
   const signature = await signer.signMessage(TEST_MESSAGE);
   const verifier = await ethers.deployContract('ERC7913P256Verifier');
 
-  return { signer, other, extraSigner, mock, wallet, wallet2, malicious, signature, verifier };
+  return { signer, other, extraSigner, mock, wallet, wallet2, malicious, strict, signature, verifier };
 }
 
 describe('SignatureChecker (ERC1271)', function () {
@@ -109,6 +110,21 @@ describe('SignatureChecker (ERC1271)', function () {
               this.signature,
             ),
           ).to.eventually.be.false;
+        });
+
+        // The signature tail must be padded to a multiple of 32 bytes, including when its length already is one.
+        describe('with wallet that requires a canonical ABI encoding', function () {
+          for (const length of [0, 1, 31, 32, 33, 64, 65, 96]) {
+            it(`with a signature of ${length} bytes`, async function () {
+              await expect(
+                this.mock.getFunction(`$${fn}`)(
+                  ethers.Typed.address(this.strict.target),
+                  TEST_MESSAGE_HASH,
+                  ethers.hexlify(ethers.randomBytes(length)),
+                ),
+              ).to.eventually.be.true;
+            });
+          }
         });
       });
     }
