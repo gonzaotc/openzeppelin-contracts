@@ -29,14 +29,22 @@ contract ERC20TimeWeightedTest is Test {
     function testAverageFromSnapshot() public {
         uint256 aliceStart = _token.cumulativeBalanceOf(_alice);
         uint256 bobStart = _token.cumulativeBalanceOf(_bob);
+        uint48 startTimepoint = _token.clock();
 
         vm.warp(_start + 2 hours);
         vm.prank(_alice);
         _token.transfer(_bob, 60);
         vm.warp(_start + 3 hours);
 
-        assertEq((_token.cumulativeBalanceOf(_alice) - aliceStart) / 3 hours, 80);
-        assertEq((_token.cumulativeBalanceOf(_bob) - bobStart) / 3 hours, 20);
+        assertEq(_token.getAverageBalanceSince(_alice, aliceStart, startTimepoint), 80);
+        assertEq(_token.getAverageBalanceSince(_bob, bobStart, startTimepoint), 20);
+    }
+
+    function testEmptyWindowReverts() public {
+        uint256 start = _token.cumulativeBalanceOf(_alice);
+        uint48 startTimepoint = _token.clock();
+        vm.expectRevert();
+        _token.getAverageBalanceSince(_alice, start, startTimepoint);
     }
 
     function testCumulativeGrowsWithoutTransfers() public {

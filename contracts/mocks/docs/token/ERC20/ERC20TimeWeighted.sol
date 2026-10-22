@@ -11,9 +11,8 @@ import {Time} from "../../../../utils/types/Time.sol";
  * @dev Example of an ERC-20 that reports the integral of each balance over time, in `balance * seconds`.
  *
  * Each account stores only the integral up to its last balance change and the timepoint of that change, in one storage
- * slot that every transfer overwrites. To get the average balance over a window, read {cumulativeBalanceOf} and
- * {clock} at its start and at its end, and divide the difference of the integrals by the difference of the
- * timepoints.
+ * slot that every transfer overwrites. To get the average balance over a window, record {cumulativeBalanceOf} and
+ * {clock} at its start, then call {getAverageBalanceSince}.
  *
  * TIP: This extension suits windows whose start is known in advance, since someone must read the integral at that
  * moment. To query any past window, consider {ERC20TimeWeightedHistory} instead, which keeps a history at a higher
@@ -34,6 +33,9 @@ abstract contract ERC20TimeWeighted is ERC20, IERC6372 {
     /// @dev The accumulator of each account.
     mapping(address account => Accumulator) private _accumulators;
 
+    /// @dev The window from `startTimepoint` to the current `clock` is empty or reversed.
+    error ERC20TimeWeightedInvalidWindow(uint48 startTimepoint, uint48 clock);
+
     /// @inheritdoc IERC6372
     function clock() public view virtual returns (uint48) {
         return Time.timestamp();
@@ -49,6 +51,20 @@ abstract contract ERC20TimeWeighted is ERC20, IERC6372 {
     function cumulativeBalanceOf(address account) public view returns (uint256) {
         Accumulator memory accumulator = _accumulators[account];
         return accumulator.cumulative + balanceOf(account) * (clock() - accumulator.timepoint);
+    }
+
+    /**
+     * @dev Returns the average balance of `account` from `startTimepoint` until now, given `startCumulative`, its
+     * {cumulativeBalanceOf} at `startTimepoint`.
+     */
+    function getAverageBalanceSince(
+        address account,
+        uint256 startCumulative,
+        uint48 startTimepoint
+    ) public view returns (uint256) {
+        uint48 currentTimepoint = clock();
+        if (startTimepoint >= currentTimepoint) revert ERC20TimeWeightedInvalidWindow(startTimepoint, currentTimepoint);
+        return (cumulativeBalanceOf(account) - startCumulative) / (currentTimepoint - startTimepoint);
     }
 
     /// @dev Integrates the balances of `from` and `to` up to now, before they change.
