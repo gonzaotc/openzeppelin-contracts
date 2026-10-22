@@ -24,9 +24,6 @@ import {Time} from "../../../../utils/types/Time.sol";
  * | balance (96 bits) | integral (128 bits) |
  * ```
  *
- * TIP: If someone can save a snapshot of each account when its period starts, such as a loyalty program when a user
- * joins, consider {ERC20TimeWeighted} instead. It keeps no history, at a lower cost per transfer.
- *
  * NOTE: This extension assumes that timepoints fit in `uint32`, which holds for timestamps until the year 2106, and that
  * balances fit in 96 bits, up to about 7.9e28. Under these assumptions, the integral always fits in 128 bits: it is at
  * most the largest balance (`2**96`) times the longest time span (`2**32` timepoints).
