@@ -8,15 +8,20 @@ import {SafeCast} from "../../../../utils/math/SafeCast.sol";
 import {Time} from "../../../../utils/types/Time.sol";
 
 /**
- * @dev Example of an ERC-20 that reports the integral of each balance over time, in `balance * seconds`.
+ * @dev Example of an ERC-20 that reports the average balance of an account since a snapshot, where each balance counts
+ * in proportion to how long it was held.
  *
- * Each account stores only the integral up to its last balance change and the timepoint of that change, in one storage
- * slot that every transfer overwrites. To get the average balance over a window, record {cumulativeBalanceOf} and
- * {clock} at its start, then call {getAverageBalanceSince}.
+ * The token keeps no history. Someone must save a snapshot of the account when the period starts: call
+ * {cumulativeBalanceOf} and {clock}, and store both. Later, {getAverageBalanceSince} returns the average since that
+ * snapshot. For example, a loyalty program saves a snapshot when a user joins, and rewards the average balance since
+ * then.
  *
- * TIP: This extension suits windows whose start is known in advance, since someone must read the integral at that
- * moment. To query any past window, consider {ERC20TimeWeightedHistory} instead, which keeps a history at a higher
- * cost per transfer.
+ * Each account stores only the integral of its balance over time, in `balance * seconds`, and the timepoint of its last
+ * change, in one storage slot that every transfer overwrites.
+ *
+ * TIP: If nobody can save a snapshot for each account when the period starts, such as an airdrop that rewards every
+ * holder by their average balance over a past quarter, consider {ERC20TimeWeightedHistory} instead. It keeps a
+ * history, at a higher cost per transfer.
  *
  * NOTE: This extension assumes that the integral fits in 208 bits, which holds for balances that fit in 160 bits and
  * timepoints that fit in 48 bits.

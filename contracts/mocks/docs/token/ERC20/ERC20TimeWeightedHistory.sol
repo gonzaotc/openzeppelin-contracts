@@ -9,7 +9,12 @@ import {Checkpoints} from "../../../../utils/structs/Checkpoints.sol";
 import {Time} from "../../../../utils/types/Time.sol";
 
 /**
- * @dev Example of an ERC-20 that reports the average balance of an account over any past period.
+ * @dev Example of an ERC-20 that reports the average balance of an account over any past period, where each balance
+ * counts in proportion to how long it was held.
+ *
+ * The token keeps a history of every balance change, so nobody needs to save anything in advance. Call
+ * {getAverageBalanceBetween} with any account and any past period. For example, an airdrop decided in April can reward
+ * every holder by their average balance over the first quarter.
  *
  * The history of each account is a {Checkpoints-Trace224}, with a `uint32` timepoint and a `uint224` value per
  * checkpoint. The value packs the balance set at that timepoint and the integral of all previous balances over time,
@@ -19,8 +24,8 @@ import {Time} from "../../../../utils/types/Time.sol";
  * | balance (96 bits) | integral (128 bits) |
  * ```
  *
- * TIP: This extension answers any past window, at a higher cost per transfer. If the start of each window is known in
- * advance, consider {ERC20TimeWeighted} instead, which keeps no history.
+ * TIP: If someone can save a snapshot of each account when its period starts, such as a loyalty program when a user
+ * joins, consider {ERC20TimeWeighted} instead. It keeps no history, at a lower cost per transfer.
  *
  * NOTE: This extension assumes that timepoints fit in `uint32`, which holds for timestamps until the year 2106, and that
  * balances fit in 96 bits, up to about 7.9e28. Under these assumptions, the integral always fits in 128 bits: it is at
