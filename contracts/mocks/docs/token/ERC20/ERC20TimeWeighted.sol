@@ -31,7 +31,7 @@ import {Time} from "../../../../utils/types/Time.sol";
  * NOTE: Keeping a history makes transfers more expensive than in a plain ERC-20, in exchange for the average balance
  * over any past period.
  */
-abstract contract ERC20TimeWeightedHistory is ERC20, IERC6372 {
+abstract contract ERC20TimeWeighted is ERC20, IERC6372 {
     using Checkpoints for Checkpoints.Trace224;
     using SafeCast for uint256;
 
@@ -39,7 +39,7 @@ abstract contract ERC20TimeWeightedHistory is ERC20, IERC6372 {
     mapping(address account => Checkpoints.Trace224) private _history;
 
     /// @dev The lookup `timepoint` is after the current `clock`.
-    error ERC20TimeWeightedHistoryFutureLookup(uint256 timepoint, uint48 clock);
+    error ERC20TimeWeightedFutureLookup(uint256 timepoint, uint48 clock);
 
     /// @inheritdoc IERC6372
     function clock() public view virtual returns (uint48) {
@@ -74,7 +74,7 @@ abstract contract ERC20TimeWeightedHistory is ERC20, IERC6372 {
     /// @dev Integral of the balance of `account` up to `timepoint`, extended from the last checkpoint before it.
     function _cumulativeAt(address account, uint256 timepoint) private view returns (uint256) {
         uint48 currentTimepoint = clock();
-        if (timepoint > currentTimepoint) revert ERC20TimeWeightedHistoryFutureLookup(timepoint, currentTimepoint);
+        if (timepoint > currentTimepoint) revert ERC20TimeWeightedFutureLookup(timepoint, currentTimepoint);
 
         (bool exists, uint32 key, uint224 packed) = _history[account].upperLookupRecentCheckpoint(timepoint.toUint32());
         if (!exists) return 0;

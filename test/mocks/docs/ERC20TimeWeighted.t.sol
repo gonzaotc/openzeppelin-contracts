@@ -4,9 +4,9 @@ pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {ERC20TimeWeightedHistory} from "@openzeppelin/contracts/mocks/docs/token/ERC20/ERC20TimeWeightedHistory.sol";
+import {ERC20TimeWeighted} from "@openzeppelin/contracts/mocks/docs/token/ERC20/ERC20TimeWeighted.sol";
 
-contract TimeWeightedToken is ERC20TimeWeightedHistory {
+contract TimeWeightedToken is ERC20TimeWeighted {
     constructor() ERC20("Token", "TKN") {}
 
     function mint(address to, uint256 amount) external {
@@ -15,7 +15,7 @@ contract TimeWeightedToken is ERC20TimeWeightedHistory {
 }
 
 /// @dev Alice holds 100 for 2 hours, then sends 60 to Bob and holds 40 for 1 hour.
-contract ERC20TimeWeightedHistoryTest is Test {
+contract ERC20TimeWeightedTest is Test {
     TimeWeightedToken internal _token = new TimeWeightedToken();
     address internal _alice = makeAddr("alice");
     address internal _bob = makeAddr("bob");
