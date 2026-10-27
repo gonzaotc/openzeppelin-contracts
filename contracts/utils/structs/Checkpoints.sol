@@ -92,22 +92,7 @@ library Checkpoints {
      * keys).
      */
     function upperLookupRecent(Trace256 storage self, uint256 key) internal view returns (uint256) {
-        uint256 len = self._checkpoints.length;
-
-        uint256 low = 0;
-        uint256 high = len;
-
-        if (len > 5) {
-            uint256 mid = len - Math.sqrt(len);
-            if (key < _unsafeAccess(self._checkpoints, mid)._key) {
-                high = mid;
-            } else {
-                low = mid + 1;
-            }
-        }
-
-        uint256 index = _upperBinaryLookup(self._checkpoints, key, low, high);
-
+        uint256 index = _upperRecentBinaryLookup(self._checkpoints, key);
         return index == 0 ? 0 : _unsafeAccess(self._checkpoints, index - 1)._value;
     }
 
@@ -121,22 +106,7 @@ library Checkpoints {
         Trace256 storage self,
         uint256 key
     ) internal view returns (bool exists, uint256 _key, uint256 _value) {
-        uint256 len = self._checkpoints.length;
-
-        uint256 low = 0;
-        uint256 high = len;
-
-        if (len > 5) {
-            uint256 mid = len - Math.sqrt(len);
-            if (key < _unsafeAccess(self._checkpoints, mid)._key) {
-                high = mid;
-            } else {
-                low = mid + 1;
-            }
-        }
-
-        uint256 index = _upperBinaryLookup(self._checkpoints, key, low, high);
-
+        uint256 index = _upperRecentBinaryLookup(self._checkpoints, key);
         if (index == 0) {
             return (false, 0, 0);
         } else {
@@ -225,6 +195,29 @@ library Checkpoints {
             self.push(Checkpoint256({_key: key, _value: value}));
             return (0, value);
         }
+    }
+
+    /**
+     * @dev Return the index of the first (oldest) checkpoint with key strictly bigger than the search key, or the
+     * array's length if there is none, narrowing the search to the most recent checkpoints first. Shared by
+     * {upperLookupRecent} and {upperLookupRecentCheckpoint}.
+     */
+    function _upperRecentBinaryLookup(Checkpoint256[] storage self, uint256 key) private view returns (uint256) {
+        uint256 len = self.length;
+
+        uint256 low = 0;
+        uint256 high = len;
+
+        if (len > 5) {
+            uint256 mid = len - Math.sqrt(len);
+            if (key < _unsafeAccess(self, mid)._key) {
+                high = mid;
+            } else {
+                low = mid + 1;
+            }
+        }
+
+        return _upperBinaryLookup(self, key, low, high);
     }
 
     /**
@@ -361,22 +354,7 @@ library Checkpoints {
      * keys).
      */
     function upperLookupRecent(Trace224 storage self, uint32 key) internal view returns (uint224) {
-        uint256 len = self._checkpoints.length;
-
-        uint256 low = 0;
-        uint256 high = len;
-
-        if (len > 5) {
-            uint256 mid = len - Math.sqrt(len);
-            if (key < _unsafeAccess(self._checkpoints, mid)._key) {
-                high = mid;
-            } else {
-                low = mid + 1;
-            }
-        }
-
-        uint256 index = _upperBinaryLookup(self._checkpoints, key, low, high);
-
+        uint256 index = _upperRecentBinaryLookup(self._checkpoints, key);
         return index == 0 ? 0 : _unsafeAccess(self._checkpoints, index - 1)._value;
     }
 
@@ -390,22 +368,7 @@ library Checkpoints {
         Trace224 storage self,
         uint32 key
     ) internal view returns (bool exists, uint32 _key, uint224 _value) {
-        uint256 len = self._checkpoints.length;
-
-        uint256 low = 0;
-        uint256 high = len;
-
-        if (len > 5) {
-            uint256 mid = len - Math.sqrt(len);
-            if (key < _unsafeAccess(self._checkpoints, mid)._key) {
-                high = mid;
-            } else {
-                low = mid + 1;
-            }
-        }
-
-        uint256 index = _upperBinaryLookup(self._checkpoints, key, low, high);
-
+        uint256 index = _upperRecentBinaryLookup(self._checkpoints, key);
         if (index == 0) {
             return (false, 0, 0);
         } else {
@@ -494,6 +457,29 @@ library Checkpoints {
             self.push(Checkpoint224({_key: key, _value: value}));
             return (0, value);
         }
+    }
+
+    /**
+     * @dev Return the index of the first (oldest) checkpoint with key strictly bigger than the search key, or the
+     * array's length if there is none, narrowing the search to the most recent checkpoints first. Shared by
+     * {upperLookupRecent} and {upperLookupRecentCheckpoint}.
+     */
+    function _upperRecentBinaryLookup(Checkpoint224[] storage self, uint32 key) private view returns (uint256) {
+        uint256 len = self.length;
+
+        uint256 low = 0;
+        uint256 high = len;
+
+        if (len > 5) {
+            uint256 mid = len - Math.sqrt(len);
+            if (key < _unsafeAccess(self, mid)._key) {
+                high = mid;
+            } else {
+                low = mid + 1;
+            }
+        }
+
+        return _upperBinaryLookup(self, key, low, high);
     }
 
     /**
@@ -630,22 +616,7 @@ library Checkpoints {
      * keys).
      */
     function upperLookupRecent(Trace208 storage self, uint48 key) internal view returns (uint208) {
-        uint256 len = self._checkpoints.length;
-
-        uint256 low = 0;
-        uint256 high = len;
-
-        if (len > 5) {
-            uint256 mid = len - Math.sqrt(len);
-            if (key < _unsafeAccess(self._checkpoints, mid)._key) {
-                high = mid;
-            } else {
-                low = mid + 1;
-            }
-        }
-
-        uint256 index = _upperBinaryLookup(self._checkpoints, key, low, high);
-
+        uint256 index = _upperRecentBinaryLookup(self._checkpoints, key);
         return index == 0 ? 0 : _unsafeAccess(self._checkpoints, index - 1)._value;
     }
 
@@ -659,22 +630,7 @@ library Checkpoints {
         Trace208 storage self,
         uint48 key
     ) internal view returns (bool exists, uint48 _key, uint208 _value) {
-        uint256 len = self._checkpoints.length;
-
-        uint256 low = 0;
-        uint256 high = len;
-
-        if (len > 5) {
-            uint256 mid = len - Math.sqrt(len);
-            if (key < _unsafeAccess(self._checkpoints, mid)._key) {
-                high = mid;
-            } else {
-                low = mid + 1;
-            }
-        }
-
-        uint256 index = _upperBinaryLookup(self._checkpoints, key, low, high);
-
+        uint256 index = _upperRecentBinaryLookup(self._checkpoints, key);
         if (index == 0) {
             return (false, 0, 0);
         } else {
@@ -763,6 +719,29 @@ library Checkpoints {
             self.push(Checkpoint208({_key: key, _value: value}));
             return (0, value);
         }
+    }
+
+    /**
+     * @dev Return the index of the first (oldest) checkpoint with key strictly bigger than the search key, or the
+     * array's length if there is none, narrowing the search to the most recent checkpoints first. Shared by
+     * {upperLookupRecent} and {upperLookupRecentCheckpoint}.
+     */
+    function _upperRecentBinaryLookup(Checkpoint208[] storage self, uint48 key) private view returns (uint256) {
+        uint256 len = self.length;
+
+        uint256 low = 0;
+        uint256 high = len;
+
+        if (len > 5) {
+            uint256 mid = len - Math.sqrt(len);
+            if (key < _unsafeAccess(self, mid)._key) {
+                high = mid;
+            } else {
+                low = mid + 1;
+            }
+        }
+
+        return _upperBinaryLookup(self, key, low, high);
     }
 
     /**
@@ -899,22 +878,7 @@ library Checkpoints {
      * keys).
      */
     function upperLookupRecent(Trace160 storage self, uint96 key) internal view returns (uint160) {
-        uint256 len = self._checkpoints.length;
-
-        uint256 low = 0;
-        uint256 high = len;
-
-        if (len > 5) {
-            uint256 mid = len - Math.sqrt(len);
-            if (key < _unsafeAccess(self._checkpoints, mid)._key) {
-                high = mid;
-            } else {
-                low = mid + 1;
-            }
-        }
-
-        uint256 index = _upperBinaryLookup(self._checkpoints, key, low, high);
-
+        uint256 index = _upperRecentBinaryLookup(self._checkpoints, key);
         return index == 0 ? 0 : _unsafeAccess(self._checkpoints, index - 1)._value;
     }
 
@@ -928,22 +892,7 @@ library Checkpoints {
         Trace160 storage self,
         uint96 key
     ) internal view returns (bool exists, uint96 _key, uint160 _value) {
-        uint256 len = self._checkpoints.length;
-
-        uint256 low = 0;
-        uint256 high = len;
-
-        if (len > 5) {
-            uint256 mid = len - Math.sqrt(len);
-            if (key < _unsafeAccess(self._checkpoints, mid)._key) {
-                high = mid;
-            } else {
-                low = mid + 1;
-            }
-        }
-
-        uint256 index = _upperBinaryLookup(self._checkpoints, key, low, high);
-
+        uint256 index = _upperRecentBinaryLookup(self._checkpoints, key);
         if (index == 0) {
             return (false, 0, 0);
         } else {
@@ -1032,6 +981,29 @@ library Checkpoints {
             self.push(Checkpoint160({_key: key, _value: value}));
             return (0, value);
         }
+    }
+
+    /**
+     * @dev Return the index of the first (oldest) checkpoint with key strictly bigger than the search key, or the
+     * array's length if there is none, narrowing the search to the most recent checkpoints first. Shared by
+     * {upperLookupRecent} and {upperLookupRecentCheckpoint}.
+     */
+    function _upperRecentBinaryLookup(Checkpoint160[] storage self, uint96 key) private view returns (uint256) {
+        uint256 len = self.length;
+
+        uint256 low = 0;
+        uint256 high = len;
+
+        if (len > 5) {
+            uint256 mid = len - Math.sqrt(len);
+            if (key < _unsafeAccess(self, mid)._key) {
+                high = mid;
+            } else {
+                low = mid + 1;
+            }
+        }
+
+        return _upperBinaryLookup(self, key, low, high);
     }
 
     /**
