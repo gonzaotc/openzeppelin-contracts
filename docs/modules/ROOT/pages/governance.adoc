@@ -235,6 +235,8 @@ contract MyGovernor is Governor, GovernorCountingSimple, GovernorVotes, Governor
 }
 ```
 
+NOTE: On chains that produce more than one block per second, consecutive blocks can share a timestamp. Voting power that moves in a later block with the same timestamp as the snapshot still counts. A `votingDelay` of 0 therefore does not fix voting power at the block that creates the proposal.
+
 === Disclaimer
 
 Timestamp based voting is a recent feature that was formalized in ERC-6372 and ERC-5805, and introduced in v4.9. At the time this feature is released, some governance tooling may not support it yet. Users can expect invalid reporting of deadlines & durations if the tool is not able to interpret the ERC6372 clock. This invalid reporting by offchain tools does not affect the onchain security and functionality of the governance contract.
