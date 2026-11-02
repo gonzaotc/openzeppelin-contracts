@@ -14,6 +14,8 @@ pragma solidity ^0.8.20;
  *
  * NOTE: After EIP-2935 activation, it takes 8191 blocks to completely fill the history.
  * Before that, only block hashes since the fork block will be available.
+ *
+ * NOTE: These limits are measured in blocks. Their duration depends on the block time of the chain.
  */
 library Blockhash {
     /// @dev Address of the EIP-2935 history storage contract.
