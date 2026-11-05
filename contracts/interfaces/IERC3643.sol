@@ -638,6 +638,10 @@ interface IIdentityRegistry {
      *
      * @param _identityRegistryStorage The address of the new Identity Registry Storage contract
      *
+     * Requirements:
+     *
+     * * Only the owner can call this function
+     *
      * Emits an {IdentityStorageSet} event.
      */
     function setIdentityRegistryStorage(address _identityRegistryStorage) external;
@@ -647,6 +651,10 @@ interface IIdentityRegistry {
      *
      * @param _claimTopicsRegistry The address of the new Claim Topics Registry contract
      *
+     * Requirements:
+     *
+     * * Only the owner can call this function
+     *
      * Emits a {ClaimTopicsRegistrySet} event.
      */
     function setClaimTopicsRegistry(address _claimTopicsRegistry) external;
@@ -655,6 +663,10 @@ interface IIdentityRegistry {
      * @dev Sets the Trusted Issuers Registry contract address.
      *
      * @param _trustedIssuersRegistry The address of the new Trusted Issuers Registry contract
+     *
+     * Requirements:
+     *
+     * * Only the owner can call this function
      *
      * Emits a {TrustedIssuersRegistrySet} event.
      */
