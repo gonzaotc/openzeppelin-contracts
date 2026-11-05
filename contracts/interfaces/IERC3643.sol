@@ -14,11 +14,30 @@ import {IPausable} from "./IPausable.sol";
  * functions on behalf of the contract owner, enabling delegation of administrative
  * tasks while maintaining security.
  *
- * The owner, as defined by ERC-173, appoints and removes agents. The permissions granted to
- * agents are defined by the implementing contract.
+ * Key concepts:
  *
- * Any contract that fulfills the role of a Token, an Identity Registry or an Identity Registry
- * Storage in ERC-3643 must be compatible with this interface.
+ * * Owner: The contract owner who can add/remove agents (typically ERC-173 owner)
+ * * Agent: Authorized addresses that can perform specific operational functions
+ * * Delegation: Agents can perform actions without requiring owner intervention
+ *
+ * Common agent responsibilities in ERC-3643:
+ *
+ * * Token minting and burning operations
+ * * Address and token freezing/unfreezing
+ * * Forced transfers for compliance or recovery
+ * * Identity registry management
+ * * Compliance rule enforcement
+ *
+ * Security model:
+ *
+ * * Only the owner can manage the agent list
+ * * Agents have limited, function-specific permissions
+ * * Agent permissions are defined by the implementing contract
+ * * Multi-agent support enables operational scalability
+ *
+ * Integration:
+ * Any contract in the ERC-3643 ecosystem that requires agent-based access control
+ * must implement this interface to ensure consistent authorization patterns.
  */
 interface IAgentRole {
     /**
