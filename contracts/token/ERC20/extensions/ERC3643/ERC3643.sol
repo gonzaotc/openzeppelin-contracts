@@ -32,14 +32,7 @@ import {ERC20} from "../../ERC20.sol";
  *   derived contract can supply preconditions or additional identity-migration steps
  *   before calling `super._recoveryAddress`.
  *
- * Deliberate divergences from the ERC-3643 text, each of which a derived contract may
- * reverse by overriding the relevant hook:
- *
- * * Mint checks {ICompliance-canTransfer}, with `from` set to the zero address, in addition to
- *   the recipient's identity, as the reference implementation does, so supply caps and
- *   distribution rules also apply to issuance. The ERC text has mint bypass the compliance rules.
- *
- * Implementation choices consistent with the ERC-3643 text:
+ * Implementation choices:
  *
  * * Mint, burn, {forcedTransfer} and {recoveryAddress} work while the token is paused; only
  *   transfers block. A derived contract that treats pause as an incident halt may override
@@ -55,6 +48,13 @@ import {ERC20} from "../../ERC20.sol";
  * * A burn or forced transfer auto-unfreezes just enough of `from`'s frozen balance to cover
  *   itself, so the `frozenTokens <= balanceOf` invariant is preserved across every path.
  * * Batch functions revert with {ERC3643InvalidArrayLength} if their arrays have different lengths.
+ *
+ * Deliberate divergences from the ERC-3643 text, each of which a derived contract may
+ * reverse by overriding the relevant hook:
+ *
+ * * Mint checks {ICompliance-canTransfer}, with `from` set to the zero address, in addition to
+ *   the recipient's identity, as the reference implementation does, so supply caps and
+ *   distribution rules also apply to issuance. The ERC text has mint bypass the compliance rules.
  *
  * IMPORTANT: ERC-3643 requires an ERC-173 owner and an agent role compatible with {IAgentRole}.
  * This contract defines neither, so a derived contract must add both and enforce them in {_checkAdmin}.
