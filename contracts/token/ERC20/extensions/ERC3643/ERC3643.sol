@@ -35,9 +35,9 @@ import {ERC20} from "../../ERC20.sol";
  * Deliberate divergences from the ERC-3643 text, each of which a derived contract may
  * reverse by overriding the relevant hook:
  *
- * * Mint checks {ICompliance-canTransfer} in addition to the recipient's identity, as the
- *   reference implementation does, so supply caps and distribution rules also apply to
- *   issuance. The ERC text has mint bypass the compliance rules.
+ * * Mint checks {ICompliance-canTransfer}, with `from` set to the zero address, in addition to
+ *   the recipient's identity, as the reference implementation does, so supply caps and
+ *   distribution rules also apply to issuance. The ERC text has mint bypass the compliance rules.
  * * Mint and burn work while the token is paused; only transfers block. Circulation and
  *   issuance/redemption are separate operational concerns.
  * * {forcedTransfer} and {recoveryAddress} bypass the pause too, in line with the spec
@@ -54,6 +54,7 @@ import {ERC20} from "../../ERC20.sol";
  *   contract may override to use a named error.
  * * A burn auto-unfreezes just enough of `from`'s frozen balance to cover itself, so the
  *   `frozenTokens <= balanceOf` invariant is preserved across every path.
+ * * Batch functions revert with {ERC3643InvalidArrayLength} if their arrays have different lengths.
  *
  * NOTE: Every transfer, mint and burn ends with an external call to the compliance
  * ({ICompliance-transferred}, {ICompliance-created} or {ICompliance-destroyed}), made after
@@ -158,12 +159,12 @@ abstract contract ERC3643 is ERC20, Pausable, IERC3643 {
         _setOnchainID(onchainID_);
     }
 
-    /// @inheritdoc IERC3643
+    /// @dev See {IERC3643-pause}. Reverts if the token is already paused.
     function pause() public virtual onlyAdmin {
         _pause();
     }
 
-    /// @inheritdoc IERC3643
+    /// @dev See {IERC3643-unpause}. Reverts if the token is not paused.
     function unpause() public virtual onlyAdmin {
         _unpause();
     }
@@ -173,12 +174,12 @@ abstract contract ERC3643 is ERC20, Pausable, IERC3643 {
         _setAddressFrozen(account, frozen);
     }
 
-    /// @inheritdoc IERC3643
+    /// @dev See {IERC3643-freezePartialTokens}. Freezes at most the unfrozen balance of `account`.
     function freezePartialTokens(address account, uint256 value) public virtual onlyAdmin {
         _freezePartialTokens(account, value);
     }
 
-    /// @inheritdoc IERC3643
+    /// @dev See {IERC3643-unfreezePartialTokens}. Reverts if `value` exceeds the frozen tokens of `account`.
     function unfreezePartialTokens(address account, uint256 value) public virtual onlyAdmin {
         _unfreezePartialTokens(account, value);
     }
