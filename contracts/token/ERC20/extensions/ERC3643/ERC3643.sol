@@ -32,7 +32,7 @@ import {ERC20} from "../../ERC20.sol";
  *   derived contract can supply preconditions or additional identity-migration steps
  *   before calling `super._recoveryAddress`.
  *
- * Implementation choices:
+ * The token also behaves as follows:
  *
  * * Mint, burn, {forcedTransfer} and {recoveryAddress} work while the token is paused; only
  *   transfers block. A derived contract that treats pause as an incident halt may override
