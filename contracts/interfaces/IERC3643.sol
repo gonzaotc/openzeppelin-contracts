@@ -387,9 +387,9 @@ interface IERC3643 is IERC20, IPausable {
      * Requirements:
      *
      * * Only the owner or authorized agents can call this function
-     * * `_userAddress` must have sufficient total balance (including frozen tokens)
+     * * `_userAddress` must have sufficient balance
      *
-     * NOTE: This function can burn both frozen and unfrozen tokens.
+     * NOTE: This function bypasses all eligibility checks.
      */
     function burn(address _userAddress, uint256 _amount) external;
 
@@ -472,7 +472,7 @@ interface IERC3643 is IERC20, IPausable {
      * Requirements:
      *
      * * Only the owner or authorized agents can call this function
-     * * Each address must have sufficient total balance
+     * * Each address must have sufficient balance
      */
     function batchBurn(address[] calldata _userAddresses, uint256[] calldata _amounts) external;
 
@@ -968,7 +968,6 @@ interface IIdentityRegistryStorage {
  *
  * * Token contracts: For transfer validation and state updates
  * * Identity Registry: For investor verification and country data
- * * Trusted Issuers Registry: For claim validation
  * * Compliance modules: For modular rule composition (when using modular design)
  */
 interface ICompliance {
@@ -1024,9 +1023,6 @@ interface ICompliance {
      * @dev Returns the address of the token contract bound to this compliance contract.
      *
      * @return The address of the bound token contract
-     *
-     * NOTE: This function assumes a single token binding. For multi-token compliance contracts,
-     * use {isTokenBound} instead.
      */
     function getTokenBound() external view returns (address);
 
