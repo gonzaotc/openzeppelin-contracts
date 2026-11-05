@@ -32,12 +32,14 @@ import {ERC20} from "../../ERC20.sol";
  *   derived contract can supply preconditions or additional identity-migration steps
  *   before calling `super._recoveryAddress`.
  *
- * Mint checks {ICompliance-canTransfer}, with `from` set to the zero address, in addition to the
- * recipient's identity, as the reference implementation does, so supply caps and distribution
- * rules also apply to issuance. This diverges from the ERC-3643 text, where mint bypasses the
- * compliance rules. A derived contract may reverse it by overriding {_update}.
+ * Deliberate divergences from the ERC-3643 text, each of which a derived contract may
+ * reverse by overriding the relevant hook:
  *
- * Other implementation choices, consistent with the ERC-3643 text:
+ * * Mint checks {ICompliance-canTransfer}, with `from` set to the zero address, in addition to
+ *   the recipient's identity, as the reference implementation does, so supply caps and
+ *   distribution rules also apply to issuance. The ERC text has mint bypass the compliance rules.
+ *
+ * Implementation choices consistent with the ERC-3643 text:
  *
  * * Mint, burn, {forcedTransfer} and {recoveryAddress} work while the token is paused; only
  *   transfers block. A derived contract that treats pause as an incident halt may override
@@ -183,13 +185,13 @@ abstract contract ERC3643 is ERC20, Pausable, IERC3643 {
         _unfreezePartialTokens(account, value);
     }
 
-    /// @inheritdoc IERC3643
+    /// @dev See {IERC3643-setIdentityRegistry}. Reverts if `identityRegistry_` is the zero address.
     function setIdentityRegistry(address identityRegistry_) public virtual onlyAdmin {
         require(identityRegistry_ != address(0), ERC3643MissingIdentityRegistry());
         _setIdentityRegistry(identityRegistry_);
     }
 
-    /// @inheritdoc IERC3643
+    /// @dev See {IERC3643-setCompliance}. Reverts if `compliance_` is the zero address.
     function setCompliance(address compliance_) public virtual onlyAdmin {
         require(compliance_ != address(0), ERC3643MissingCompliance());
         _setCompliance(compliance_, true);
@@ -210,7 +212,10 @@ abstract contract ERC3643 is ERC20, Pausable, IERC3643 {
         _burn(from, value);
     }
 
-    /// @inheritdoc IERC3643
+    /**
+     * @dev See {IERC3643-recoveryAddress}. Registers `updated` with `investorOnchainID` and reverts with
+     * {ERC3643FailedForcedTransfer} if `updated` is not verified afterwards.
+     */
     function recoveryAddress(
         address lost,
         address updated,
