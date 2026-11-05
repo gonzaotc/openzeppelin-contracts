@@ -150,17 +150,17 @@ abstract contract ERC3643 is ERC20, Pausable, IERC3643 {
         return _frozenTokens[account];
     }
 
-    /// @inheritdoc IERC3643
+    /// @dev See {IERC3643-setName}. Emits an {UpdatedTokenInformation} event.
     function setName(string memory name_) public virtual onlyAdmin {
         _setName(name_);
     }
 
-    /// @inheritdoc IERC3643
+    /// @dev See {IERC3643-setSymbol}. Emits an {UpdatedTokenInformation} event.
     function setSymbol(string memory symbol_) public virtual onlyAdmin {
         _setSymbol(symbol_);
     }
 
-    /// @inheritdoc IERC3643
+    /// @dev See {IERC3643-setOnchainID}. Emits an {UpdatedTokenInformation} event.
     function setOnchainID(address onchainID_) public virtual onlyAdmin {
         _setOnchainID(onchainID_);
     }
@@ -202,7 +202,10 @@ abstract contract ERC3643 is ERC20, Pausable, IERC3643 {
         _setCompliance(compliance_, true);
     }
 
-    /// @inheritdoc IERC3643
+    /**
+     * @dev See {IERC3643-forcedTransfer}. Emits a {TokensUnfrozen} event if `value` exceeds the free balance
+     * of `from`.
+     */
     function forcedTransfer(address from, address to, uint256 value) public virtual onlyAdmin returns (bool) {
         return _forcedTransfer(from, to, value);
     }
@@ -212,7 +215,10 @@ abstract contract ERC3643 is ERC20, Pausable, IERC3643 {
         _mint(to, value);
     }
 
-    /// @inheritdoc IERC3643
+    /**
+     * @dev See {IERC3643-burn}. Emits a {TokensUnfrozen} event if `value` exceeds the free balance of
+     * `from`.
+     */
     function burn(address from, uint256 value) public virtual onlyAdmin {
         _burn(from, value);
     }
@@ -220,6 +226,9 @@ abstract contract ERC3643 is ERC20, Pausable, IERC3643 {
     /**
      * @dev See {IERC3643-recoveryAddress}. Registers `updated` with `investorOnchainID` and reverts with
      * {ERC3643FailedForcedTransfer} if `updated` is not verified afterwards.
+     *
+     * Moves the frozen state of `lost` to `updated`: emits {TokensUnfrozen} and {TokensFrozen} if `lost` has
+     * frozen tokens, and {AddressFrozen} events if `lost` is frozen.
      */
     function recoveryAddress(
         address lost,
