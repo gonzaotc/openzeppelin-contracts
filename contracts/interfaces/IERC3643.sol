@@ -66,6 +66,8 @@ interface IAgentRole {
      * Requirements:
      *
      * * Only the contract owner can call this function
+     * * `_agent` must not be the zero address
+     * * `_agent` must not already be an agent
      *
      * Emits an {AgentAdded} event.
      */
@@ -82,6 +84,7 @@ interface IAgentRole {
      * Requirements:
      *
      * * Only the contract owner can call this function
+     * * `_agent` must currently be an agent
      *
      * Emits an {AgentRemoved} event.
      */
@@ -122,9 +125,6 @@ interface IAgentRole {
  * * Neither the sender nor the receiver wallet is frozen
  * * The token is not paused
  * * The compliance accepts the transfer ({ICompliance-canTransfer} returns true)
- *
- * {mint} and {forcedTransfer} only require the receiver to be verified and bypass the compliance
- * rules. {burn} bypasses all eligibility checks.
  *
  * The token relies on ERC-173 for ownership, with the owner appointing agents, and must be
  * compatible with {IAgentRole}.
@@ -281,22 +281,24 @@ interface IERC3643 is IERC20, IPausable {
     function setOnchainID(address _onchainID) external;
 
     /**
-     * @dev Pauses the token. Transfers are not allowed while paused.
+     * @dev Pauses token transfers.
      *
      * Requirements:
      *
      * * Only the owner or authorized agents can call this function
+     * * The contract must not already be paused
      *
      * Emits a {Paused} event.
      */
     function pause() external;
 
     /**
-     * @dev Unpauses the token, allowing transfers again.
+     * @dev Unpauses token transfers.
      *
      * Requirements:
      *
      * * Only the owner or authorized agents can call this function
+     * * The contract must be paused
      *
      * Emits an {Unpaused} event.
      */
@@ -339,6 +341,7 @@ interface IERC3643 is IERC20, IPausable {
      * Requirements:
      *
      * * Only the owner or authorized agents can call this function
+     * * `_userAddress` must have sufficient frozen tokens to unfreeze
      *
      * Emits a {TokensUnfrozen} event.
      */
@@ -384,8 +387,6 @@ interface IERC3643 is IERC20, IPausable {
      * * `_from` must have sufficient balance
      * * `_to` must be verified in the identity registry
      *
-     * Emits a {IERC20-Transfer} event.
-     *
      * NOTE: This function bypasses compliance rules but still requires identity verification.
      */
     function forcedTransfer(address _from, address _to, uint256 _amount) external returns (bool);
@@ -400,10 +401,6 @@ interface IERC3643 is IERC20, IPausable {
      *
      * * Only the owner or authorized agents can call this function
      * * `_to` must be verified in the identity registry
-     *
-     * Emits a {IERC20-Transfer} event.
-     *
-     * NOTE: This function bypasses compliance rules but still requires identity verification.
      */
     function mint(address _to, uint256 _amount) external;
 
@@ -417,8 +414,6 @@ interface IERC3643 is IERC20, IPausable {
      *
      * * Only the owner or authorized agents can call this function
      * * `_userAddress` must have sufficient balance
-     *
-     * Emits a {IERC20-Transfer} event.
      *
      * NOTE: This function bypasses all eligibility checks.
      */
@@ -452,13 +447,10 @@ interface IERC3643 is IERC20, IPausable {
      *
      * Requirements:
      *
-     * * The token must not be paused
-     * * The caller and each recipient must not be frozen
-     * * Each recipient must be verified in the identity registry
+     * * Each transfer must meet the same requirements as {IERC20-transfer}
+     * * Arrays must have the same length
      * * Each individual transfer must meet all compliance requirements
      * * Sender must have sufficient unfrozen balance for the total amount
-     *
-     * Emits a {IERC20-Transfer} event for each entry.
      */
     function batchTransfer(address[] calldata _toList, uint256[] calldata _amounts) external;
 
@@ -472,10 +464,9 @@ interface IERC3643 is IERC20, IPausable {
      * Requirements:
      *
      * * Only the owner or authorized agents can call this function
+     * * All arrays must have the same length
      * * Each recipient must be verified in the identity registry
      * * Each sender must have sufficient balance
-     *
-     * Emits a {IERC20-Transfer} event for each entry.
      */
     function batchForcedTransfer(
         address[] calldata _fromList,
@@ -492,11 +483,8 @@ interface IERC3643 is IERC20, IPausable {
      * Requirements:
      *
      * * Only the owner or authorized agents can call this function
+     * * Arrays must have the same length
      * * Each recipient must be verified in the identity registry
-     *
-     * Emits a {IERC20-Transfer} event for each entry.
-     *
-     * NOTE: This function bypasses compliance rules but still requires identity verification.
      */
     function batchMint(address[] calldata _toList, uint256[] calldata _amounts) external;
 
@@ -509,9 +497,8 @@ interface IERC3643 is IERC20, IPausable {
      * Requirements:
      *
      * * Only the owner or authorized agents can call this function
+     * * Arrays must have the same length
      * * Each address must have sufficient balance
-     *
-     * Emits a {IERC20-Transfer} event for each entry.
      */
     function batchBurn(address[] calldata _userAddresses, uint256[] calldata _amounts) external;
 
@@ -524,8 +511,7 @@ interface IERC3643 is IERC20, IPausable {
      * Requirements:
      *
      * * Only the owner or authorized agents can call this function
-     *
-     * Emits an {AddressFrozen} event for each entry.
+     * * Arrays must have the same length
      */
     function batchSetAddressFrozen(address[] calldata _userAddresses, bool[] calldata _freeze) external;
 
@@ -538,8 +524,7 @@ interface IERC3643 is IERC20, IPausable {
      * Requirements:
      *
      * * Only the owner or authorized agents can call this function
-     *
-     * Emits a {TokensFrozen} event for each entry.
+     * * Arrays must have the same length
      */
     function batchFreezePartialTokens(address[] calldata _userAddresses, uint256[] calldata _amounts) external;
 
@@ -552,8 +537,8 @@ interface IERC3643 is IERC20, IPausable {
      * Requirements:
      *
      * * Only the owner or authorized agents can call this function
-     *
-     * Emits a {TokensUnfrozen} event for each entry.
+     * * Arrays must have the same length
+     * * Each address must have sufficient frozen tokens
      */
     function batchUnfreezePartialTokens(address[] calldata _userAddresses, uint256[] calldata _amounts) external;
 }
@@ -667,6 +652,7 @@ interface IIdentityRegistry {
      * Requirements:
      *
      * * Only the owner can call this function
+     * * `_identityRegistryStorage` must be a valid contract address
      *
      * Emits an {IdentityStorageSet} event.
      */
@@ -680,6 +666,7 @@ interface IIdentityRegistry {
      * Requirements:
      *
      * * Only the owner can call this function
+     * * `_claimTopicsRegistry` must be a valid contract address
      *
      * Emits a {ClaimTopicsRegistrySet} event.
      */
@@ -693,6 +680,7 @@ interface IIdentityRegistry {
      * Requirements:
      *
      * * Only the owner can call this function
+     * * `_trustedIssuersRegistry` must be a valid contract address
      *
      * Emits a {TrustedIssuersRegistrySet} event.
      */
@@ -708,6 +696,9 @@ interface IIdentityRegistry {
      * Requirements:
      *
      * * Only authorized agents can call this function
+     * * `_userAddress` must not already be registered
+     * * `_identity` must be a valid Identity contract
+     * * `_country` must be a valid ISO-3166 country code
      *
      * Emits an {IdentityRegistered} event.
      */
@@ -721,6 +712,7 @@ interface IIdentityRegistry {
      * Requirements:
      *
      * * Only authorized agents can call this function
+     * * `_userAddress` must be currently registered
      *
      * Emits an {IdentityRemoved} event.
      */
@@ -735,6 +727,8 @@ interface IIdentityRegistry {
      * Requirements:
      *
      * * Only authorized agents can call this function
+     * * `_userAddress` must be currently registered
+     * * `_country` must be a valid ISO-3166 country code
      *
      * Emits a {CountryUpdated} event.
      */
@@ -749,6 +743,8 @@ interface IIdentityRegistry {
      * Requirements:
      *
      * * Only authorized agents can call this function
+     * * `_userAddress` must be currently registered
+     * * `_identity` must be a valid Identity contract
      *
      * Emits an {IdentityUpdated} event.
      */
@@ -764,6 +760,10 @@ interface IIdentityRegistry {
      * Requirements:
      *
      * * Only authorized agents can call this function
+     * * All arrays must have the same length
+     * * No `_userAddresses` should already be registered
+     * * All `_identities` must be valid Identity contracts
+     * * All `_countries` must be valid ISO-3166 country codes
      *
      * Emits multiple {IdentityRegistered} events.
      */
@@ -800,7 +800,7 @@ interface IIdentityRegistry {
      * @dev Returns the Identity contract associated with a wallet address.
      *
      * @param _userAddress The wallet address to query
-     * @return The Identity contract interface
+     * @return The Identity contract interface, or zero address if not registered
      */
     function identity(address _userAddress) external view returns (IIdentity);
 
@@ -808,7 +808,7 @@ interface IIdentityRegistry {
      * @dev Returns the country code for a registered investor.
      *
      * @param _userAddress The wallet address to query
-     * @return The country code (ISO-3166 standard)
+     * @return The country code (ISO-3166 standard), or 0 if not registered
      */
     function investorCountry(address _userAddress) external view returns (uint16);
 }
@@ -892,7 +892,7 @@ interface IIdentityRegistryStorage {
      * @dev Returns the Identity contract stored for a given wallet address.
      *
      * @param _userAddress The wallet address to query
-     * @return The Identity contract interface
+     * @return The Identity contract interface, or zero address if not stored
      */
     function storedIdentity(address _userAddress) external view returns (IIdentity);
 
@@ -900,7 +900,7 @@ interface IIdentityRegistryStorage {
      * @dev Returns the country code stored for a given investor.
      *
      * @param _userAddress The wallet address to query
-     * @return The country code (ISO-3166 standard)
+     * @return The country code (ISO-3166 standard), or 0 if not stored
      */
     function storedInvestorCountry(address _userAddress) external view returns (uint16);
 
@@ -914,6 +914,9 @@ interface IIdentityRegistryStorage {
      * Requirements:
      *
      * * Only agents can call this function (usually the bound Identity Registry contracts)
+     * * `_userAddress` must not already be stored
+     * * `_identity` must be a valid Identity contract address
+     * * `_country` must be a valid ISO-3166 country code
      *
      * Emits an {IdentityStored} event.
      */
@@ -927,6 +930,7 @@ interface IIdentityRegistryStorage {
      * Requirements:
      *
      * * Only agents can call this function (usually the bound Identity Registry contracts)
+     * * `_userAddress` must be currently stored
      *
      * Emits an {IdentityUnstored} event.
      */
@@ -941,6 +945,8 @@ interface IIdentityRegistryStorage {
      * Requirements:
      *
      * * Only agents can call this function (usually the bound Identity Registry contracts)
+     * * `_userAddress` must be currently stored
+     * * `_country` must be a valid ISO-3166 country code
      *
      * Emits a {CountryModified} event.
      */
@@ -955,19 +961,23 @@ interface IIdentityRegistryStorage {
      * Requirements:
      *
      * * Only agents can call this function (usually the bound Identity Registry contracts)
+     * * `_userAddress` must be currently stored
+     * * `_identity` must be a valid Identity contract address
      *
      * Emits an {IdentityModified} event.
      */
     function modifyStoredIdentity(address _userAddress, IIdentity _identity) external;
 
     /**
-     * @dev Binds an Identity Registry contract to this storage, appointing it as an agent with write access.
+     * @dev Binds an Identity Registry contract to this storage, granting it write access.
      *
      * @param _identityRegistry The address of the Identity Registry contract to bind
      *
      * Requirements:
      *
      * * Only the owner can call this function
+     * * `_identityRegistry` must be a valid contract address
+     * * `_identityRegistry` must not already be bound
      *
      * Emits an {IdentityRegistryBound} event.
      */
@@ -981,6 +991,7 @@ interface IIdentityRegistryStorage {
      * Requirements:
      *
      * * Only the owner can call this function
+     * * `_identityRegistry` must be currently bound
      *
      * Emits an {IdentityRegistryUnbound} event.
      */
@@ -999,12 +1010,8 @@ interface IIdentityRegistryStorage {
  * @dev Interface for the Compliance contract in the ERC-3643 ecosystem.
  *
  * The Compliance contract is responsible for enforcing the rules and regulations
- * of the security token offering. It ensures that all token transfers
+ * of the security token offering. It ensures that all token transfers and operations
  * comply with the legal requirements set by the token issuer and regulatory authorities.
- * It can be tailor-made or modular, composed of external compliance modules.
- *
- * The compliance relies on ERC-173 for ownership. The owner sets the compliance parameters and
- * binds the compliance to a token contract.
  *
  * Key responsibilities:
  *
@@ -1012,6 +1019,7 @@ interface IIdentityRegistryStorage {
  * * Validate transfer eligibility based on offering regulations
  * * Maintain state for compliance-related data (e.g., investor limits, country restrictions)
  * * Provide hooks for compliance state updates during token operations
+ * * Enable modular compliance through rule composition
  *
  * Compliance types typically enforced:
  *
@@ -1019,12 +1027,14 @@ interface IIdentityRegistryStorage {
  * * Maximum token amount per investor
  * * Minimum holding periods and lock-up rules
  * * Geographic restrictions and country-based limits
+ * * Investor accreditation requirements
  * * Transfer timing restrictions
  *
  * The compliance contract works in conjunction with:
  *
  * * Token contracts: For transfer validation and state updates
  * * Identity Registry: For investor verification and country data
+ * * Trusted Issuers Registry: For claim validation
  * * Compliance modules: For modular rule composition (when using modular design)
  */
 interface ICompliance {
@@ -1050,6 +1060,8 @@ interface ICompliance {
      * Requirements:
      *
      * * Only the owner can call this function
+     * * `_token` must be a valid ERC-3643 token contract
+     * * `_token` must not already be bound to another compliance contract
      *
      * Emits a {TokenBound} event.
      */
@@ -1063,6 +1075,7 @@ interface ICompliance {
      * Requirements:
      *
      * * Only the owner can call this function
+     * * `_token` must be currently bound to this compliance contract
      *
      * Emits a {TokenUnbound} event.
      */
@@ -1079,7 +1092,10 @@ interface ICompliance {
     /**
      * @dev Returns the address of the token contract bound to this compliance contract.
      *
-     * @return The address of the bound token contract
+     * @return The address of the bound token contract, or zero address if none is bound
+     *
+     * NOTE: This function assumes a single token binding. For multi-token compliance contracts,
+     * use {isTokenBound} instead.
      */
     function getTokenBound() external view returns (address);
 
@@ -1090,7 +1106,7 @@ interface ICompliance {
      * maximum amount of tokens per investor, and not the eligibility of the investors, which
      * {IIdentityRegistry-isVerified} checks.
      *
-     * @param _from The address sending the tokens
+     * @param _from The address sending the tokens (use zero address for minting)
      * @param _to The address receiving the tokens
      * @param _amount The amount of tokens being transferred
      * @return True if the transfer is compliant and allowed, false otherwise
@@ -1114,6 +1130,8 @@ interface ICompliance {
      *
      * * Only bound token contracts can call this function
      * * Should only be called after a successful transfer
+     *
+     * NOTE: This function is for state updates only and should not perform validation.
      */
     function transferred(address _from, address _to, uint256 _amount) external;
 
@@ -1158,8 +1176,6 @@ interface ICompliance {
  * trusted to provide valid claims for identity verification. It defines which claim issuers
  * are authorized and what types of claims (topics) each issuer is allowed to emit.
  *
- * The registry relies on ERC-173 for ownership. The owner adds, removes and updates the trusted issuers.
- *
  * Key responsibilities:
  *
  * * Maintain a registry of trusted claim issuer contracts
@@ -1175,6 +1191,7 @@ interface ICompliance {
  *
  * * Identity Registry: For identity verification processes
  * * Identity contracts: For claim validation
+ * * Compliance contracts: For regulatory requirement enforcement
  * * Claim Topics Registry: For defining required claim types
  */
 interface ITrustedIssuersRegistry {
@@ -1210,6 +1227,9 @@ interface ITrustedIssuersRegistry {
      * Requirements:
      *
      * * Only the owner can call this function
+     * * `_trustedIssuer` must be a valid claim issuer contract
+     * * `_trustedIssuer` must not already be registered
+     * * `_claimTopics` array must not be empty
      *
      * Emits a {TrustedIssuerAdded} event.
      */
@@ -1223,6 +1243,7 @@ interface ITrustedIssuersRegistry {
      * Requirements:
      *
      * * Only the owner can call this function
+     * * `_trustedIssuer` must be currently registered as a trusted issuer
      *
      * Emits a {TrustedIssuerRemoved} event.
      */
@@ -1237,6 +1258,8 @@ interface ITrustedIssuersRegistry {
      * Requirements:
      *
      * * Only the owner can call this function
+     * * `_trustedIssuer` must be currently registered as a trusted issuer
+     * * `_claimTopics` array must not be empty
      *
      * Emits a {ClaimTopicsUpdated} event.
      */
@@ -1262,6 +1285,10 @@ interface ITrustedIssuersRegistry {
      *
      * @param _trustedIssuer The address of the trusted claim issuer
      * @return Array of claim topic IDs that the issuer is authorized to emit
+     *
+     * Requirements:
+     *
+     * * `_trustedIssuer` must be registered as a trusted issuer
      */
     function getTrustedIssuerClaimTopics(IClaimIssuer _trustedIssuer) external view returns (uint256[] memory);
 
@@ -1294,8 +1321,6 @@ interface ITrustedIssuersRegistry {
  * verification in the security token ecosystem. It maintains a registry of trusted claim
  * topics that investors must possess to be eligible for token operations.
  *
- * The registry relies on ERC-173 for ownership. The owner adds and removes the required claim topics.
- *
  * Key responsibilities:
  *
  * * Define required claim topic IDs for token eligibility
@@ -1315,7 +1340,7 @@ interface ITrustedIssuersRegistry {
  *
  * The registry works in conjunction with:
  *
- * * Identity Registry: For enforcing claim requirements through {IIdentityRegistry-isVerified}
+ * * Identity Registry: For comprehensive identity verification
  * * Trusted Issuers Registry: For validating claim issuers
  * * Identity contracts: For storing and retrieving claims
  */
@@ -1346,6 +1371,7 @@ interface IClaimTopicsRegistry {
      * Requirements:
      *
      * * Only the owner can call this function
+     * * `_claimTopic` must not already be registered
      *
      * Emits a {ClaimTopicAdded} event.
      */
@@ -1362,6 +1388,7 @@ interface IClaimTopicsRegistry {
      * Requirements:
      *
      * * Only the owner can call this function
+     * * `_claimTopic` must be currently registered
      *
      * Emits a {ClaimTopicRemoved} event.
      */
@@ -1385,8 +1412,6 @@ interface IClaimTopicsRegistry {
 /**
  * @title IIdentity
  * @dev Type marker for the ONCHAINID identity contract referenced by ERC-3643.
- *
- * NOTE: This interface does not declare the identity functions. It only types identity contract addresses.
  */
 interface IIdentity {}
 
@@ -1397,5 +1422,5 @@ interface IIdentity {}
  * This interface serves as a type-safe wrapper for claim issuer contract addresses.
  * Claim issuers are trusted entities that can issue verifiable claims about identities.
  */
-// Empty interface serves as a type marker for the ONCHAINID claim issuer contracts referenced by ERC-3643
+// Empty interface serves as a type marker for claim issuer contracts since it's not defined by ERC-3643
 interface IClaimIssuer {}

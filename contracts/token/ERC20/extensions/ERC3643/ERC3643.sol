@@ -16,8 +16,8 @@ import {ERC20} from "../../ERC20.sol";
  *
  * * an {IIdentityRegistry} that verifies whether an address may hold the token, through its
  *   own claims + trusted-issuers-and-topics setup;
- * * an {ICompliance} that checks transfers and mints against per-token rules and is notified of
- *   every movement so its modules can track distribution.
+ * * an {ICompliance} that applies per-token rules to every movement and is notified of every
+ *   supply change so its modules can track distribution.
  *
  * Extension points:
  *
@@ -32,41 +32,43 @@ import {ERC20} from "../../ERC20.sol";
  *   derived contract can supply preconditions or additional identity-migration steps
  *   before calling `super._recoveryAddress`.
  *
+ * Deliberate divergence from the ERC-3643 text, which a derived contract may reverse by
+ * overriding {_update}:
+ *
+ * * Mint checks {ICompliance-canTransfer} in addition to the recipient's identity, as the
+ *   reference implementation does, so supply caps and distribution rules also apply to
+ *   issuance. The ERC text has mint bypass the compliance rules.
+ *
  * The token also behaves as follows:
  *
- * * Mint, burn, {forcedTransfer} and {recoveryAddress} work while the token is paused; only
- *   transfers block. A derived contract that treats pause as an incident halt may override
- *   {forcedTransfer} and {recoveryAddress} with {Pausable-whenNotPaused}.
- * * {forcedTransfer} and {recoveryAddress} also skip the frozen-wallet and free-balance checks and
- *   move frozen tokens.
+ * * Mint and burn work while the token is paused; only transfers block. Circulation and
+ *   issuance/redemption are separate operational concerns.
+ * * {forcedTransfer} and {recoveryAddress} bypass the pause too, in line with the spec
+ *   phrasing that a forced transfer "only requires the receiver to be whitelisted and
+ *   verified." A derived contract that treats pause as an incident halt and wants to
+ *   contain the forced-transfer agent during it may override both entry points with
+ *   {Pausable-whenNotPaused}.
  * * {ICompliance-created} fires on mint and {ICompliance-destroyed} on burn, in addition
  *   to {ICompliance-transferred} on transfers, so modules that track distribution stay
  *   in sync with supply changes.
+ * * Burn skips the recipient identity check (the recipient is the zero address).
  * * {_freezePartialTokens} silently clamps to the free balance instead of reverting.
  * * {_unfreezePartialTokens} reverts with a Solidity panic on under-freeze; a derived
  *   contract may override to use a named error.
- * * A burn or forced transfer auto-unfreezes just enough of `from`'s frozen balance to cover
- *   itself, so the `frozenTokens <= balanceOf` invariant is preserved across every path.
- * * Batch functions revert with {ERC3643InvalidArrayLength} if their arrays have different lengths.
- *
- * Deliberate divergences from the ERC-3643 text, each of which a derived contract may
- * reverse by overriding the relevant hook:
- *
- * * Mint checks {ICompliance-canTransfer}, with `from` set to the zero address, in addition to
- *   the recipient's identity, as the reference implementation does, so supply caps and
- *   distribution rules also apply to issuance. The ERC text has mint bypass the compliance rules.
- *
- * IMPORTANT: ERC-3643 requires an ERC-173 owner and an agent role compatible with {IAgentRole}.
- * This contract defines neither, so a derived contract must add both and enforce them in {_checkAdmin}.
- * Recovery also registers and deletes identities on the identity registry, which ERC-3643 restricts
- * to its agents, so the token must be an agent of its identity registry for {recoveryAddress} to succeed.
+ * * A burn auto-unfreezes just enough of `from`'s frozen balance to cover itself, so the
+ *   `frozenTokens <= balanceOf` invariant is preserved across every path.
  *
  * NOTE: Every transfer, mint and burn ends with an external call to the compliance
  * ({ICompliance-transferred}, {ICompliance-created} or {ICompliance-destroyed}), made after
  * the balances are updated, and the compliance may reenter the token from it. A deployment
  * that binds compliance code it does not control can inherit {ReentrancyGuardTransient} and
- * mark {_update} and {_forcedTransfer} with `nonReentrant`. {_recoveryAddress} reaches the compliance
- * only through {_forcedTransfer}, so it needs no guard of its own.
+ * mark {_update} and {_forcedTransfer} with `nonReentrant`. Guarding {_recoveryAddress} as well
+ * makes it revert, since it calls {_forcedTransfer}.
+ *
+ * IMPORTANT: ERC-3643 requires an ERC-173 owner and an agent role compatible with {IAgentRole}.
+ * This contract defines neither, so a derived contract must add both and enforce them in {_checkAdmin}.
+ * The token must also be an agent of its identity registry, since {recoveryAddress} registers and
+ * deletes identities there.
  */
 abstract contract ERC3643 is ERC20, Pausable, IERC3643 {
     mapping(address account => bool) private _frozen;
@@ -89,10 +91,10 @@ abstract contract ERC3643 is ERC20, Pausable, IERC3643 {
     /// @dev The wallet is frozen.
     error ERC3643FrozenWallet(address account);
 
-    /// @dev A call to {IIdentityRegistry-isVerified} returned false during a transfer or mint.
+    /// @dev A call to {IIdentityRegistry-isVerified} returned false during a transfer.
     error ERC3643UnverifiedRecipient(address account);
 
-    /// @dev A call to {ICompliance-canTransfer} returned false during a transfer or mint.
+    /// @dev A call to {ICompliance-canTransfer} returned false during a transfer.
     error ERC3643ComplianceViolation(address from, address to, uint256 value);
 
     /// @dev A call to {_forcedTransfer} returned false during a recovery.
@@ -165,12 +167,12 @@ abstract contract ERC3643 is ERC20, Pausable, IERC3643 {
         _setOnchainID(onchainID_);
     }
 
-    /// @dev See {IERC3643-pause}. Reverts if the token is already paused.
+    /// @inheritdoc IERC3643
     function pause() public virtual onlyAdmin {
         _pause();
     }
 
-    /// @dev See {IERC3643-unpause}. Reverts if the token is not paused.
+    /// @inheritdoc IERC3643
     function unpause() public virtual onlyAdmin {
         _unpause();
     }
@@ -180,32 +182,29 @@ abstract contract ERC3643 is ERC20, Pausable, IERC3643 {
         _setAddressFrozen(account, frozen);
     }
 
-    /// @dev See {IERC3643-freezePartialTokens}. Freezes at most the unfrozen balance of `account`.
+    /// @inheritdoc IERC3643
     function freezePartialTokens(address account, uint256 value) public virtual onlyAdmin {
         _freezePartialTokens(account, value);
     }
 
-    /// @dev See {IERC3643-unfreezePartialTokens}. Reverts if `value` exceeds the frozen tokens of `account`.
+    /// @inheritdoc IERC3643
     function unfreezePartialTokens(address account, uint256 value) public virtual onlyAdmin {
         _unfreezePartialTokens(account, value);
     }
 
-    /// @dev See {IERC3643-setIdentityRegistry}. Reverts if `identityRegistry_` is the zero address.
+    /// @inheritdoc IERC3643
     function setIdentityRegistry(address identityRegistry_) public virtual onlyAdmin {
         require(identityRegistry_ != address(0), ERC3643MissingIdentityRegistry());
         _setIdentityRegistry(identityRegistry_);
     }
 
-    /// @dev See {IERC3643-setCompliance}. Reverts if `compliance_` is the zero address.
+    /// @inheritdoc IERC3643
     function setCompliance(address compliance_) public virtual onlyAdmin {
         require(compliance_ != address(0), ERC3643MissingCompliance());
         _setCompliance(compliance_, true);
     }
 
-    /**
-     * @dev See {IERC3643-forcedTransfer}. Emits a {TokensUnfrozen} event if `value` exceeds the free balance
-     * of `from`.
-     */
+    /// @inheritdoc IERC3643
     function forcedTransfer(address from, address to, uint256 value) public virtual onlyAdmin returns (bool) {
         return _forcedTransfer(from, to, value);
     }
@@ -215,10 +214,7 @@ abstract contract ERC3643 is ERC20, Pausable, IERC3643 {
         _mint(to, value);
     }
 
-    /**
-     * @dev See {IERC3643-burn}. Emits a {TokensUnfrozen} event if `value` exceeds the free balance of
-     * `from`.
-     */
+    /// @inheritdoc IERC3643
     function burn(address from, uint256 value) public virtual onlyAdmin {
         _burn(from, value);
     }
@@ -226,9 +222,6 @@ abstract contract ERC3643 is ERC20, Pausable, IERC3643 {
     /**
      * @dev See {IERC3643-recoveryAddress}. Registers `updated` with `investorOnchainID` and reverts with
      * {ERC3643FailedForcedTransfer} if `updated` is not verified afterwards.
-     *
-     * Moves the frozen state of `lost` to `updated`: emits {TokensUnfrozen} and {TokensFrozen} if `lost` has
-     * frozen tokens, and {AddressFrozen} events if `lost` is frozen.
      */
     function recoveryAddress(
         address lost,
