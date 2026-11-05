@@ -150,17 +150,17 @@ abstract contract ERC3643 is ERC20, Pausable, IERC3643 {
         return _frozenTokens[account];
     }
 
-    /// @dev See {IERC3643-setName}. Emits an {UpdatedTokenInformation} event.
+    /// @inheritdoc IERC3643
     function setName(string memory name_) public virtual onlyAdmin {
         _setName(name_);
     }
 
-    /// @dev See {IERC3643-setSymbol}. Emits an {UpdatedTokenInformation} event.
+    /// @inheritdoc IERC3643
     function setSymbol(string memory symbol_) public virtual onlyAdmin {
         _setSymbol(symbol_);
     }
 
-    /// @dev See {IERC3643-setOnchainID}. Emits an {UpdatedTokenInformation} event.
+    /// @inheritdoc IERC3643
     function setOnchainID(address onchainID_) public virtual onlyAdmin {
         _setOnchainID(onchainID_);
     }

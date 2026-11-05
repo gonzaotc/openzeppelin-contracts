@@ -249,6 +249,8 @@ interface IERC3643 is IERC20, IPausable {
      * Requirements:
      *
      * * Only the owner or authorized agents can call this function
+     *
+     * Emits an {UpdatedTokenInformation} event.
      */
     function setName(string calldata _name) external;
 
@@ -260,6 +262,8 @@ interface IERC3643 is IERC20, IPausable {
      * Requirements:
      *
      * * Only the owner or authorized agents can call this function
+     *
+     * Emits an {UpdatedTokenInformation} event.
      */
     function setSymbol(string calldata _symbol) external;
 
@@ -271,6 +275,8 @@ interface IERC3643 is IERC20, IPausable {
      * Requirements:
      *
      * * Only the owner or authorized agents can call this function
+     *
+     * Emits an {UpdatedTokenInformation} event.
      */
     function setOnchainID(address _onchainID) external;
 
@@ -378,6 +384,8 @@ interface IERC3643 is IERC20, IPausable {
      * * `_from` must have sufficient balance
      * * `_to` must be verified in the identity registry
      *
+     * Emits a {IERC20-Transfer} event.
+     *
      * NOTE: This function bypasses compliance rules but still requires identity verification.
      */
     function forcedTransfer(address _from, address _to, uint256 _amount) external returns (bool);
@@ -393,6 +401,8 @@ interface IERC3643 is IERC20, IPausable {
      * * Only the owner or authorized agents can call this function
      * * `_to` must be verified in the identity registry
      *
+     * Emits a {IERC20-Transfer} event.
+     *
      * NOTE: This function bypasses compliance rules but still requires identity verification.
      */
     function mint(address _to, uint256 _amount) external;
@@ -407,6 +417,8 @@ interface IERC3643 is IERC20, IPausable {
      *
      * * Only the owner or authorized agents can call this function
      * * `_userAddress` must have sufficient balance
+     *
+     * Emits a {IERC20-Transfer} event.
      *
      * NOTE: This function bypasses all eligibility checks.
      */
@@ -445,6 +457,8 @@ interface IERC3643 is IERC20, IPausable {
      * * Each recipient must be verified in the identity registry
      * * Each individual transfer must meet all compliance requirements
      * * Sender must have sufficient unfrozen balance for the total amount
+     *
+     * Emits a {IERC20-Transfer} event for each entry.
      */
     function batchTransfer(address[] calldata _toList, uint256[] calldata _amounts) external;
 
@@ -460,6 +474,8 @@ interface IERC3643 is IERC20, IPausable {
      * * Only the owner or authorized agents can call this function
      * * Each recipient must be verified in the identity registry
      * * Each sender must have sufficient balance
+     *
+     * Emits a {IERC20-Transfer} event for each entry.
      */
     function batchForcedTransfer(
         address[] calldata _fromList,
@@ -478,6 +494,8 @@ interface IERC3643 is IERC20, IPausable {
      * * Only the owner or authorized agents can call this function
      * * Each recipient must be verified in the identity registry
      *
+     * Emits a {IERC20-Transfer} event for each entry.
+     *
      * NOTE: This function bypasses compliance rules but still requires identity verification.
      */
     function batchMint(address[] calldata _toList, uint256[] calldata _amounts) external;
@@ -492,6 +510,8 @@ interface IERC3643 is IERC20, IPausable {
      *
      * * Only the owner or authorized agents can call this function
      * * Each address must have sufficient balance
+     *
+     * Emits a {IERC20-Transfer} event for each entry.
      */
     function batchBurn(address[] calldata _userAddresses, uint256[] calldata _amounts) external;
 
@@ -504,6 +524,8 @@ interface IERC3643 is IERC20, IPausable {
      * Requirements:
      *
      * * Only the owner or authorized agents can call this function
+     *
+     * Emits an {AddressFrozen} event for each entry.
      */
     function batchSetAddressFrozen(address[] calldata _userAddresses, bool[] calldata _freeze) external;
 
@@ -516,6 +538,8 @@ interface IERC3643 is IERC20, IPausable {
      * Requirements:
      *
      * * Only the owner or authorized agents can call this function
+     *
+     * Emits a {TokensFrozen} event for each entry.
      */
     function batchFreezePartialTokens(address[] calldata _userAddresses, uint256[] calldata _amounts) external;
 
@@ -528,6 +552,8 @@ interface IERC3643 is IERC20, IPausable {
      * Requirements:
      *
      * * Only the owner or authorized agents can call this function
+     *
+     * Emits a {TokensUnfrozen} event for each entry.
      */
     function batchUnfreezePartialTokens(address[] calldata _userAddresses, uint256[] calldata _amounts) external;
 }
