@@ -32,29 +32,28 @@ import {ERC20} from "../../ERC20.sol";
  *   derived contract can supply preconditions or additional identity-migration steps
  *   before calling `super._recoveryAddress`.
  *
- * Deliberate divergences from the ERC-3643 text, each of which a derived contract may
- * reverse by overriding the relevant hook:
+ * Mint checks {ICompliance-canTransfer}, with `from` set to the zero address, in addition to the
+ * recipient's identity, as the reference implementation does, so supply caps and distribution
+ * rules also apply to issuance. This diverges from the ERC-3643 text, where mint bypasses the
+ * compliance rules. A derived contract may reverse it by overriding {_update}.
  *
- * * Mint checks {ICompliance-canTransfer}, with `from` set to the zero address, in addition to
- *   the recipient's identity, as the reference implementation does, so supply caps and
- *   distribution rules also apply to issuance. The ERC text has mint bypass the compliance rules.
- * * Mint and burn work while the token is paused; only transfers block. Circulation and
- *   issuance/redemption are separate operational concerns.
- * * {forcedTransfer} and {recoveryAddress} bypass the pause too, in line with the spec
- *   phrasing that a forced transfer "only requires the receiver to be whitelisted and
- *   verified." A derived contract that treats pause as an incident halt and wants to
- *   contain the forced-transfer agent during it may override both entry points with
- *   {Pausable-whenNotPaused}.
+ * Other implementation choices, consistent with the ERC-3643 text:
+ *
+ * * Mint, burn, {forcedTransfer} and {recoveryAddress} work while the token is paused; only
+ *   transfers block. A derived contract that treats pause as an incident halt may override
+ *   {forcedTransfer} and {recoveryAddress} with {Pausable-whenNotPaused}.
  * * {ICompliance-created} fires on mint and {ICompliance-destroyed} on burn, in addition
  *   to {ICompliance-transferred} on transfers, so modules that track distribution stay
  *   in sync with supply changes.
- * * Burn skips the recipient identity check (the recipient is the zero address).
  * * {_freezePartialTokens} silently clamps to the free balance instead of reverting.
  * * {_unfreezePartialTokens} reverts with a Solidity panic on under-freeze; a derived
  *   contract may override to use a named error.
  * * A burn auto-unfreezes just enough of `from`'s frozen balance to cover itself, so the
  *   `frozenTokens <= balanceOf` invariant is preserved across every path.
  * * Batch functions revert with {ERC3643InvalidArrayLength} if their arrays have different lengths.
+ *
+ * IMPORTANT: ERC-3643 requires an ERC-173 owner and an agent role compatible with {IAgentRole}.
+ * This contract defines neither, so a derived contract must add both and enforce them in {_checkAdmin}.
  *
  * NOTE: Every transfer, mint and burn ends with an external call to the compliance
  * ({ICompliance-transferred}, {ICompliance-created} or {ICompliance-destroyed}), made after

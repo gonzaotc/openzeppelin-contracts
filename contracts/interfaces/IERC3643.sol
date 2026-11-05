@@ -14,30 +14,11 @@ import {IPausable} from "./IPausable.sol";
  * functions on behalf of the contract owner, enabling delegation of administrative
  * tasks while maintaining security.
  *
- * Key concepts:
+ * The owner, as defined by ERC-173, appoints and removes agents. The permissions granted to
+ * agents are defined by the implementing contract.
  *
- * * Owner: The contract owner who can add/remove agents (typically ERC-173 owner)
- * * Agent: Authorized addresses that can perform specific operational functions
- * * Delegation: Agents can perform actions without requiring owner intervention
- *
- * Common agent responsibilities in ERC-3643:
- *
- * * Token minting and burning operations
- * * Address and token freezing/unfreezing
- * * Forced transfers for compliance or recovery
- * * Identity registry management
- * * Compliance rule enforcement
- *
- * Security model:
- *
- * * Only the owner can manage the agent list
- * * Agents have limited, function-specific permissions
- * * Agent permissions are defined by the implementing contract
- * * Multi-agent support enables operational scalability
- *
- * Integration:
- * Any contract in the ERC-3643 ecosystem that requires agent-based access control
- * must implement this interface to ensure consistent authorization patterns.
+ * Any contract that fulfills the role of a Token, an Identity Registry or an Identity Registry
+ * Storage in ERC-3643 must be compatible with this interface.
  */
 interface IAgentRole {
     /**
@@ -114,6 +95,20 @@ interface IAgentRole {
  * * Batch operations for gas efficiency
  * * Recovery mechanisms for lost private keys
  * * Administrative controls for token management
+ *
+ * A transfer (including {IERC20-transfer} and {IERC20-transferFrom}) only succeeds if:
+ *
+ * * The sender holds enough free balance (total balance minus frozen tokens)
+ * * The receiver is verified in the identity registry ({IIdentityRegistry-isVerified})
+ * * Neither the sender nor the receiver wallet is frozen
+ * * The token is not paused
+ * * The compliance accepts the transfer ({ICompliance-canTransfer} returns true)
+ *
+ * {mint} and {forcedTransfer} only require the receiver to be verified and bypass the compliance
+ * rules. {burn} bypasses all eligibility checks.
+ *
+ * The token relies on ERC-173 for ownership, with the owner appointing agents, and must be
+ * compatible with {IAgentRole}.
  *
  * See https://eips.ethereum.org/EIPS/eip-3643
  */
@@ -331,7 +326,7 @@ interface IERC3643 is IERC20, IPausable {
      *
      * Requirements:
      *
-     * * Only the owner can call this function
+     * * Only the owner or authorized agents can call this function
      *
      * Emits an {IdentityRegistryAdded} event.
      */
@@ -344,7 +339,7 @@ interface IERC3643 is IERC20, IPausable {
      *
      * Requirements:
      *
-     * * Only the owner can call this function
+     * * Only the owner or authorized agents can call this function
      *
      * Emits a {ComplianceAdded} event.
      */
@@ -378,6 +373,8 @@ interface IERC3643 is IERC20, IPausable {
      *
      * * Only the owner or authorized agents can call this function
      * * `_to` must be verified in the identity registry
+     *
+     * NOTE: This function bypasses compliance rules but still requires identity verification.
      */
     function mint(address _to, uint256 _amount) external;
 
@@ -461,6 +458,8 @@ interface IERC3643 is IERC20, IPausable {
      *
      * * Only the owner or authorized agents can call this function
      * * Each recipient must be verified in the identity registry
+     *
+     * NOTE: This function bypasses compliance rules but still requires identity verification.
      */
     function batchMint(address[] calldata _toList, uint256[] calldata _amounts) external;
 
@@ -536,6 +535,9 @@ interface IERC3643 is IERC20, IPausable {
  * * Trusted Issuers Registry: For managing authorized claim issuers
  * * Claim Topics Registry: For defining required claim topics
  * * Individual Identity contracts: For storing investor claims and credentials
+ *
+ * The registry relies on ERC-173 for ownership and must be compatible with {IAgentRole}. The owner
+ * appoints agents, and only agents can add or remove identities. Each token has its own registry.
  */
 interface IIdentityRegistry {
     /**
@@ -617,10 +619,6 @@ interface IIdentityRegistry {
      *
      * @param _identityRegistryStorage The address of the new Identity Registry Storage contract
      *
-     * Requirements:
-     *
-     * * Only the owner can call this function
-     *
      * Emits an {IdentityStorageSet} event.
      */
     function setIdentityRegistryStorage(address _identityRegistryStorage) external;
@@ -630,10 +628,6 @@ interface IIdentityRegistry {
      *
      * @param _claimTopicsRegistry The address of the new Claim Topics Registry contract
      *
-     * Requirements:
-     *
-     * * Only the owner can call this function
-     *
      * Emits a {ClaimTopicsRegistrySet} event.
      */
     function setClaimTopicsRegistry(address _claimTopicsRegistry) external;
@@ -642,10 +636,6 @@ interface IIdentityRegistry {
      * @dev Sets the Trusted Issuers Registry contract address.
      *
      * @param _trustedIssuersRegistry The address of the new Trusted Issuers Registry contract
-     *
-     * Requirements:
-     *
-     * * Only the owner can call this function
      *
      * Emits a {TrustedIssuersRegistrySet} event.
      */
@@ -790,6 +780,9 @@ interface IIdentityRegistry {
  * * Scalability: One storage contract can serve multiple registries
  * * Upgradability: Registry contracts can be updated while preserving data
  * * Access Control: Only agents, usually the bound registries, can modify stored data
+ *
+ * The storage relies on ERC-173 for ownership and must be compatible with {IAgentRole}. The owner
+ * appoints agents, usually by binding Identity Registries with {bindIdentityRegistry}.
  */
 interface IIdentityRegistryStorage {
     /**
@@ -911,7 +904,7 @@ interface IIdentityRegistryStorage {
     function modifyStoredIdentity(address _userAddress, IIdentity _identity) external;
 
     /**
-     * @dev Binds an Identity Registry contract to this storage, granting it write access.
+     * @dev Binds an Identity Registry contract to this storage, appointing it as an agent with write access.
      *
      * @param _identityRegistry The address of the Identity Registry contract to bind
      *
@@ -951,6 +944,10 @@ interface IIdentityRegistryStorage {
  * The Compliance contract is responsible for enforcing the rules and regulations
  * of the security token offering. It ensures that all token transfers
  * comply with the legal requirements set by the token issuer and regulatory authorities.
+ * It can be tailor-made or modular, composed of external compliance modules.
+ *
+ * The compliance relies on ERC-173 for ownership. The owner sets the compliance parameters and
+ * binds the compliance to a token contract.
  *
  * Key responsibilities:
  *
@@ -958,7 +955,6 @@ interface IIdentityRegistryStorage {
  * * Validate transfer eligibility based on offering regulations
  * * Maintain state for compliance-related data (e.g., investor limits, country restrictions)
  * * Provide hooks for compliance state updates during token operations
- * * Enable modular compliance through rule composition
  *
  * Compliance types typically enforced:
  *
@@ -966,7 +962,6 @@ interface IIdentityRegistryStorage {
  * * Maximum token amount per investor
  * * Minimum holding periods and lock-up rules
  * * Geographic restrictions and country-based limits
- * * Investor accreditation requirements
  * * Transfer timing restrictions
  *
  * The compliance contract works in conjunction with:
@@ -1038,19 +1033,16 @@ interface ICompliance {
     /**
      * @dev Checks if a transfer is compliant with the rules defined in this compliance contract.
      *
-     * This function performs comprehensive compliance validation including:
-     * * Investor limits (maximum number of token holders)
-     * * Amount restrictions (maximum tokens per investor)
-     * * Country-based restrictions and limits
-     * * Lock-up periods and transfer timing rules
-     * * Any other custom compliance rules implemented
+     * It checks the global compliance rules of the token, such as a maximum number of token holders or a
+     * maximum amount of tokens per investor, and not the eligibility of the investors, which
+     * {IIdentityRegistry-isVerified} checks.
      *
      * @param _from The address sending the tokens
      * @param _to The address receiving the tokens
      * @param _amount The amount of tokens being transferred
      * @return True if the transfer is compliant and allowed, false otherwise
      *
-     * NOTE: This function should be called before executing any transfer to ensure compliance.
+     * NOTE: A transfer must only proceed if this function returns true.
      * It does not modify state and can be used for pre-validation.
      */
     function canTransfer(address _from, address _to, uint256 _amount) external view returns (bool);
@@ -1068,8 +1060,6 @@ interface ICompliance {
      * Requirements:
      *
      * * Should only be called after a successful transfer
-     *
-     * NOTE: This function is for state updates only and should not perform validation.
      */
     function transferred(address _from, address _to, uint256 _amount) external;
 
@@ -1112,6 +1102,8 @@ interface ICompliance {
  * trusted to provide valid claims for identity verification. It defines which claim issuers
  * are authorized and what types of claims (topics) each issuer is allowed to emit.
  *
+ * The registry relies on ERC-173 for ownership. The owner adds, removes and updates the trusted issuers.
+ *
  * Key responsibilities:
  *
  * * Maintain a registry of trusted claim issuer contracts
@@ -1127,7 +1119,6 @@ interface ICompliance {
  *
  * * Identity Registry: For identity verification processes
  * * Identity contracts: For claim validation
- * * Compliance contracts: For regulatory requirement enforcement
  * * Claim Topics Registry: For defining required claim types
  */
 interface ITrustedIssuersRegistry {
@@ -1247,6 +1238,8 @@ interface ITrustedIssuersRegistry {
  * verification in the security token ecosystem. It maintains a registry of trusted claim
  * topics that investors must possess to be eligible for token operations.
  *
+ * The registry relies on ERC-173 for ownership. The owner adds and removes the required claim topics.
+ *
  * Key responsibilities:
  *
  * * Define required claim topic IDs for token eligibility
@@ -1266,10 +1259,9 @@ interface ITrustedIssuersRegistry {
  *
  * The registry works in conjunction with:
  *
- * * Identity Registry: For comprehensive identity verification
+ * * Identity Registry: For enforcing claim requirements through {IIdentityRegistry-isVerified}
  * * Trusted Issuers Registry: For validating claim issuers
  * * Identity contracts: For storing and retrieving claims
- * * Compliance contracts: For enforcing claim requirements
  */
 interface IClaimTopicsRegistry {
     /**
@@ -1336,31 +1328,11 @@ interface IClaimTopicsRegistry {
 
 /**
  * @title IIdentity
- * @dev Minimal interface representing an identity contract address.
+ * @dev Type marker for the ONCHAINID identity contract referenced by ERC-3643.
  *
- * This interface serves as a type-safe wrapper for identity contract addresses
- * in the ERC-3643 ecosystem. The actual identity functionality is implementation-
- * specific and not defined by ERC-3643.
- *
- * Implementers are free to use any identity system that provides:
- *
- * * Onchain identity verification
- * * Claim management capabilities
- * * Integration with trusted claim issuers
- *
- * NOTE: Not formally defined in ERC-3643. Provided for convenience.
+ * NOTE: This interface does not declare the identity functions. It only types identity contract addresses.
  */
-interface IIdentity {
-    enum KeyPurpose {
-        Management,
-        Execution
-    }
-
-    /**
-     * @dev Checks if a key has a specific purpose.
-     */
-    function keyHasPurpose(bytes32 key, KeyPurpose purpose) external view returns (bool);
-}
+interface IIdentity {}
 
 /**
  * @title IClaimIssuer
@@ -1369,5 +1341,5 @@ interface IIdentity {
  * This interface serves as a type-safe wrapper for claim issuer contract addresses.
  * Claim issuers are trusted entities that can issue verifiable claims about identities.
  */
-// Empty interface serves as a type marker for claim issuer contracts since it's not defined by ERC-3643
+// Empty interface serves as a type marker for the ONCHAINID claim issuer contracts referenced by ERC-3643
 interface IClaimIssuer {}
