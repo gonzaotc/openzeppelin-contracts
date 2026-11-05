@@ -1086,6 +1086,7 @@ interface ICompliance {
      *
      * Requirements:
      *
+     * * Only bound token contracts can call this function
      * * Should only be called after a successful transfer
      */
     function transferred(address _from, address _to, uint256 _amount) external;
@@ -1101,6 +1102,7 @@ interface ICompliance {
      *
      * Requirements:
      *
+     * * Only bound token contracts can call this function
      * * Should only be called after successful token creation
      */
     function created(address _to, uint256 _amount) external;
@@ -1116,6 +1118,7 @@ interface ICompliance {
      *
      * Requirements:
      *
+     * * Only bound token contracts can call this function
      * * Should only be called after successful token destruction
      */
     function destroyed(address _from, uint256 _amount) external;
